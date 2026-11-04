@@ -28,7 +28,8 @@ td input{width:100%;min-width:70px}
 .total{font-size:20px;font-weight:700;text-align:left;padding:10px 0}
 .new{color:var(--ok);font-size:12px}
 .wrap{overflow-x:auto}
-#msg{position:fixed;bottom:14px;left:14px;background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:8px;display:none}
+#msg{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:12px 22px;border-radius:10px;display:none;z-index:99;font-size:16px;box-shadow:0 4px 16px rgba(0,0,0,.3);max-width:90%;text-align:center}
+#msg.ok{background:var(--ok);color:#fff}
 .pos{color:var(--ok)}.neg{color:var(--bad)}
 </style>
 </head>
@@ -98,7 +99,7 @@ const $ = id => document.getElementById(id);
 const n = v => Number(v) || 0;
 const fmt = v => n(v).toLocaleString('en-US', {maximumFractionDigits:2});
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function toast(t){const m=$('msg');m.textContent=t;m.style.display='block';setTimeout(()=>m.style.display='none',2500)}
+let tt;function toast(t,ok){const m=$('msg');m.textContent=t;m.className=ok?'ok':'';m.style.display='block';clearTimeout(tt);tt=setTimeout(()=>m.style.display='none',ok?4000:3000)}
 
 async function load(){
   try{
@@ -162,7 +163,8 @@ async function saveReceipt(){
                  date:$('dt').value, total:lines.reduce((s,l)=>s+l.total,0)};
   try{ toast('جارٍ الحفظ...'); await post({action:'saveReceipt',receipt,lines}); await new Promise(r=>setTimeout(r,1500)); await load();
     if(!DB.receipts.some(x=>x.id===receipt.id)) throw new Error('لم يصل الوصل للسبريدشيت، تحقق من نشر السكربت');
-    resetForm(); toast('تم الحفظ ✓'); }
+    const wasEdit=!!editId; resetForm(); document.querySelector('[data-t=new]').click(); scrollTo(0,0);
+    toast((wasEdit?'✓ تم تعديل الوصل':'✓ تم حفظ الوصل بنجاح')+(receipt.number?' رقم '+receipt.number:'')+' — المجموع '+fmt(receipt.total),true); }
   catch(e){ toast('فشل الحفظ: '+e.message) }
 }
 
