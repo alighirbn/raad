@@ -107,8 +107,16 @@ async function load(){
   }catch(e){toast('تعذر تحميل البيانات: تحقق من رابط API')}
 }
 async function post(body){
-  const r = await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
-  const j = await r.json(); if(!j.ok) throw new Error(j.error); return j;
+  const opt={method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)};
+  try{
+    const r = await fetch(API,opt);
+    const j = await r.json(); if(!j.ok) throw new Error(j.error); return j;
+  }catch(e){
+    if(!(e instanceof TypeError)) throw e;
+    // احتياط: بعض المتصفحات تمنع قراءة الرد، لكن الإرسال ينجح. نرسل بوضع no-cors ونتحقق بعدها بالتحميل
+    await fetch(API,{...opt,mode:'no-cors'});
+    return {ok:true,opaque:true};
+  }
 }
 
 // ---- التبويبات
@@ -152,7 +160,9 @@ async function saveReceipt(){
   if(!$('dt').value) return toast('حدد التاريخ');
   const receipt={id:editId||String(Date.now()), number:$('num').value.trim(), supplier:$('sup').value.trim(),
                  date:$('dt').value, total:lines.reduce((s,l)=>s+l.total,0)};
-  try{ toast('جارٍ الحفظ...'); await post({action:'saveReceipt',receipt,lines}); await load(); resetForm(); toast('تم الحفظ ✓'); }
+  try{ toast('جارٍ الحفظ...'); await post({action:'saveReceipt',receipt,lines}); await new Promise(r=>setTimeout(r,1500)); await load();
+    if(!DB.receipts.some(x=>x.id===receipt.id)) throw new Error('لم يصل الوصل للسبريدشيت، تحقق من نشر السكربت');
+    resetForm(); toast('تم الحفظ ✓'); }
   catch(e){ toast('فشل الحفظ: '+e.message) }
 }
 
@@ -174,7 +184,7 @@ function editR(id){
 }
 async function delR(id){
   if(!confirm('حذف هذا الوصل؟')) return;
-  try{ await post({action:'deleteReceipt',id}); await load(); toast('تم الحذف'); }catch(e){toast('فشل: '+e.message)}
+  try{ await post({action:'deleteReceipt',id}); await new Promise(r=>setTimeout(r,1500)); await load(); toast('تم الحذف'); }catch(e){toast('فشل: '+e.message)}
 }
 function renderRep(){
   const f=$('rf').value,t=$('rt').value,agg={};
